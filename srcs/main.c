@@ -24,7 +24,7 @@ typedef struct {
 int location = 0;
 
 static float g_zoom = 1.0f;
-static int g_needs_clear = 1;
+static int g_needs_clear = 0;
 
 static const button g_triangle_button = {760.0f, 620.0f, 400.0f, 100.0f};
 static const button g_exit_button = {760.0f, 460.0f, 400.0f, 100.0f};
