@@ -1,14 +1,11 @@
 #include "fractal.h"
+#include "text.h"
 #include <stdlib.h>
 #include <time.h>
+#include <string.h>
 
 #define WIDTH 1920
 #define HEIGHT 1080
-
-typedef struct {
-	float x;
-	float y;
-} point;
 
 typedef struct {
 	float x;
@@ -17,21 +14,46 @@ typedef struct {
 	float height;
 } button;
 
+typedef struct {
+	point A;
+	point B;
+	point C;
+	point D;
+	int points;
+} shape;
+
+typedef struct {
+	button rect;
+	int location;
+	const char *label;
+} menu_button;
+
 //locations
 //0 = main menu
 //1 = sierpinski triangle
 
-int location = 0;
+#define LOCATION_MENU 0
+#define LOCATION_TRIANGLE 1
+#define LOCATION_RECTANGLE 2
+#define LOCATION_CIRCLE 3
+#define LOCATION_JULIA 4
+#define LOCATION_EXIT 5
+
+int location = LOCATION_MENU;
 
 static float g_zoom = 1.0f;
 static int g_needs_clear = 0;
 
-static const button g_triangle_button = {760.0f, 620.0f, 400.0f, 100.0f};
-static const button g_exit_button = {760.0f, 460.0f, 400.0f, 100.0f};
+static const menu_button g_menu_buttons[5] = {
+	{{760.0f, 760.0f, 400.0f, 80.0f}, LOCATION_TRIANGLE, "TRIANGLE"},
+	{{760.0f, 660.0f, 400.0f, 80.0f}, LOCATION_RECTANGLE, "RECTANGLE"},
+	{{760.0f, 560.0f, 400.0f, 80.0f}, LOCATION_CIRCLE, "CIRCLE"},
+	{{760.0f, 460.0f, 400.0f, 80.0f}, LOCATION_JULIA, "JULIA"},
+	{{760.0f, 360.0f, 400.0f, 80.0f}, LOCATION_EXIT, "EXIT"}
+};
 
-point TOP = {WIDTH/2, HEIGHT*3/4};
-point LEFT = {WIDTH/4, HEIGHT/4};
-point RIGHT = {WIDTH*3/4, HEIGHT/4};
+shape Shape;
+
 
 point zoom_point(point p)
 {
@@ -88,12 +110,30 @@ static void draw_button(button rect, float red, float green, float blue)
 	glEnd();
 }
 
+static void write_button_text(button rect, const char *label)
+{
+	float pixel_size;
+	float text_width;
+	point start;
+
+	pixel_size = 4.0f;
+	text_width = (float)strlen(label) * 6.0f * pixel_size;
+	start.x = rect.x + (rect.width - text_width) * 0.5f;
+	start.y = rect.y + (rect.height - 7.0f * pixel_size) * 0.5f;
+	glColor3f(0.0f, 0.0f, 0.0f);
+	write_text(label, pixel_size, start);
+}
+
 static void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods)
 {
 	(void)scancode;
 	(void)mods;
+	(void)window;
 	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
-		glfwSetWindowShouldClose(window, GLFW_TRUE);
+	{
+		location = LOCATION_MENU;
+		g_needs_clear = 1;
+	}
 	if (key == GLFW_KEY_KP_ADD && action == GLFW_PRESS)
 		zoom_in_func();
 	if (key == GLFW_KEY_KP_SUBTRACT && action == GLFW_PRESS)
@@ -110,25 +150,50 @@ static void mouse_button_callback(GLFWwindow *window, int button, int action, in
 	(void)mods;
 	if (button != GLFW_MOUSE_BUTTON_LEFT || action != GLFW_PRESS)
 		return;
-	if (location != 0)
+	if (location != LOCATION_MENU)
 		return;
 	glfwGetCursorPos(window, &mouse_x, &mouse_y);
 	x = (float)mouse_x;
 	y = HEIGHT - (float)mouse_y;
-	if (point_in_button(x, y, g_triangle_button))
+	for (int i = 0; i < 5; i++)
 	{
-		location = 1;
+		if (!point_in_button(x, y, g_menu_buttons[i].rect))
+			continue;
+		location = g_menu_buttons[i].location;
 		g_needs_clear = 1;
+		if (location == LOCATION_TRIANGLE)
+		{
+			Shape.A.x = WIDTH / 2.0f;
+			Shape.A.y = HEIGHT * 3.0f / 4.0f;
+			Shape.B.x = WIDTH / 4.0f;
+			Shape.B.y = HEIGHT / 4.0f;
+			Shape.C.x = WIDTH * 3.0f / 4.0f;
+			Shape.C.y = HEIGHT / 4.0f;
+			Shape.points = 3;
+		}
+		if (location == LOCATION_RECTANGLE)
+		{
+			Shape.A.x = WIDTH/4;
+			Shape.A.y = HEIGHT/4;
+			Shape.B.x = WIDTH*3/4;
+			Shape.B.y = HEIGHT/4;
+			Shape.C.x = WIDTH*3/4;
+			Shape.C.y = HEIGHT*3/4;
+			Shape.D.x = WIDTH/4;
+			Shape.D.y = HEIGHT*3/4;
+			Shape.points = 4;
+		}
+		if (location == LOCATION_EXIT)
+			glfwSetWindowShouldClose(window, GLFW_TRUE);
+		return;
 	}
-	else if (point_in_button(x, y, g_exit_button))
-		glfwSetWindowShouldClose(window, GLFW_TRUE);
 }
 
 void draw_triangle()
 {
-	point a = zoom_point(TOP);
-	point b = zoom_point(LEFT);
-	point c = zoom_point(RIGHT);
+	point a = zoom_point(Shape.A);
+	point b = zoom_point(Shape.B);
+	point c = zoom_point(Shape.C);
 
 	glBegin(GL_LINE_LOOP);
 	glVertex3f(a.x, a.y, 0);
@@ -139,8 +204,11 @@ void draw_triangle()
 
 void Main_menu()
 {
-	draw_button(g_triangle_button, 0.80f, 0.80f, 0.80f);
-	draw_button(g_exit_button, 0.75f, 0.75f, 0.75f);
+	for (int i = 0; i < 5; i++)
+	{
+		draw_button(g_menu_buttons[i].rect, 0.85f, 0.85f, 0.85f);
+		write_button_text(g_menu_buttons[i].rect, g_menu_buttons[i].label);
+	}
 }
 
 void render_loop()
@@ -153,11 +221,24 @@ void render_loop()
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		g_needs_clear = 0;
 	}
-	if (location == 1)
+	if (location == LOCATION_MENU)
+	{
+		glClearColor(0, 0, 0, 1);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		Main_menu();
+	}
+	else if (location == LOCATION_TRIANGLE)
+	{
+		draw_triangle();
 		make_fractal_triangle();
+	}
+	else if (location == LOCATION_RECTANGLE)
+	{
+		make_fractal_rectangle();
+	}
 }
 
-point random_point_in_triangle(point A, point B, point C)
+point random_point_in_triangle()
 {
 	float r1 = (float)rand() / (float)RAND_MAX;
 	float r2 = (float)rand() / (float)RAND_MAX;
@@ -167,8 +248,8 @@ point random_point_in_triangle(point A, point B, point C)
 		r2 = 1.0f - r2;
 	}
 	point P;
-	P.x = A.x + r1 * (B.x - A.x) + r2 * (C.x - A.x);
-	P.y = A.y + r1 * (B.y - A.y) + r2 * (C.y - A.y);
+	P.x = Shape.A.x + r1 * (Shape.B.x - Shape.A.x) + r2 * (Shape.C.x - Shape.A.x);
+	P.y = Shape.A.y + r1 * (Shape.B.y - Shape.A.y) + r2 * (Shape.C.y - Shape.A.y);
 	return (P);
 }
 
@@ -183,7 +264,7 @@ void make_fractal_triangle()
 	if (!seeded)
 	{
 		srand((unsigned int)time(NULL));
-		current = random_point_in_triangle(TOP, LEFT, RIGHT);
+		current = random_point_in_triangle();
 		seeded = 1;
 	}
 	glPointSize(1);
@@ -193,13 +274,99 @@ void make_fractal_triangle()
 	{
 		int pick = rand() % 3;
 		if (pick == 0)
-			vertex = TOP;
+			vertex = Shape.A;
 		else if (pick == 1)
-			vertex = LEFT;
+			vertex = Shape.B;
 		else
-			vertex = RIGHT;
+			vertex = Shape.C;
 		current.x = (current.x + vertex.x) / 2;
 		current.y = (current.y + vertex.y) / 2;
+		plotted = zoom_point(current);
+		glVertex3f(plotted.x, plotted.y, 0);
+		i++;
+	}
+	glEnd();
+}
+
+point random_point_in_rectangle()
+{
+	point p;
+	float min_x = Shape.A.x;
+	float max_x = Shape.C.x;
+	float min_y = Shape.A.y;
+	float max_y = Shape.C.y;
+	float t;
+
+	if (min_x > max_x) { t = min_x; min_x = max_x; max_x = t; }
+	if (min_y > max_y) { t = min_y; min_y = max_y; max_y = t; }
+
+	p.x = min_x + ((float)rand() / (float)RAND_MAX) * (max_x - min_x);
+	p.y = min_y + ((float)rand() / (float)RAND_MAX) * (max_y - min_y);
+	return (p);
+}
+
+void make_fractal_rectangle()
+{
+	static int seeded = 0;
+	static point current;
+	point vertex;
+	point plotted;
+	int i;
+
+	if (!seeded)
+	{
+		srand((unsigned int)time(NULL));
+		current = random_point_in_rectangle();
+		seeded = 1;
+	}
+	glPointSize(1);
+	glBegin(GL_POINTS);
+	i = 0;
+	while(i < 20000)
+	{
+		int pick = rand() % 8;
+		switch (pick)
+		{
+		case 0:
+			vertex = Shape.A;
+			break;
+		case 1:
+			vertex = Shape.B;
+			break;
+		case 2:
+			vertex = Shape.C;
+			break;
+		case 3:
+			vertex = Shape.C;
+			break;
+		case 4:
+		{
+			vertex.x = Shape.B.x/2;
+			vertex.y = Shape.B.y;
+			break;
+		}
+		case 5:
+		{
+			vertex.x = Shape.D.x/2;
+			vertex.y = Shape.D.y;
+			break;
+		}
+		case 6:
+		{
+			vertex.x = Shape.A.x;
+			vertex.y = Shape.C.y/2;
+			break;
+		}
+		case 7:
+		{
+			vertex.x = Shape.B.x;
+			vertex.y = Shape.D.y/2;
+			break;
+		}
+			break;
+		}
+		current.x = (current.x + vertex.x) / 3;
+		current.y = (current.y + vertex.y) / 3;
 		plotted = zoom_point(current);
 		glVertex3f(plotted.x, plotted.y, 0);
 		i++;

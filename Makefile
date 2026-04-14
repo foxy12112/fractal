@@ -39,7 +39,7 @@ ERROR_FILE	=	error.log
 #											Sources												#
 #################################################################################################
 
-_SRCS			=	main.c glad.c
+_SRCS			=	main.c glad.c text.c
 SRCS			=	$(addprefix srcs/, $(_SRCS))
 
 OBJS			=	$(SRCS:srcs/%.c=bin/%.o)
