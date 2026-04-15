@@ -35,7 +35,7 @@ typedef struct {
 #define LOCATION_MENU 0
 #define LOCATION_TRIANGLE 1
 #define LOCATION_RECTANGLE 2
-#define LOCATION_CIRCLE 3
+#define LOCATION_MANDELBROT 3
 #define LOCATION_JULIA 4
 #define LOCATION_EXIT 5
 
@@ -47,7 +47,7 @@ static int g_needs_clear = 0;
 static const menu_button g_menu_buttons[5] = {
 	{{760.0f, 760.0f, 400.0f, 80.0f}, LOCATION_TRIANGLE, "TRIANGLE"},
 	{{760.0f, 660.0f, 400.0f, 80.0f}, LOCATION_RECTANGLE, "RECTANGLE"},
-	{{760.0f, 560.0f, 400.0f, 80.0f}, LOCATION_CIRCLE, "CIRCLE"},
+	{{760.0f, 560.0f, 400.0f, 80.0f}, LOCATION_MANDELBROT, "MANDELBROT"},
 	{{760.0f, 460.0f, 400.0f, 80.0f}, LOCATION_JULIA, "JULIA"},
 	{{760.0f, 360.0f, 400.0f, 80.0f}, LOCATION_EXIT, "EXIT"}
 };
@@ -189,16 +189,20 @@ static void mouse_button_callback(GLFWwindow *window, int button, int action, in
 	}
 }
 
-void draw_triangle()
+void draw_outline()
 {
 	point a = zoom_point(Shape.A);
 	point b = zoom_point(Shape.B);
 	point c = zoom_point(Shape.C);
-
 	glBegin(GL_LINE_LOOP);
 	glVertex3f(a.x, a.y, 0);
 	glVertex3f(b.x, b.y, 0);
 	glVertex3f(c.x, c.y, 0);
+	if (Shape.points == 4)
+	{
+		point d = zoom_point(Shape.D);
+		glVertex3f(d.x, d.y, 0);
+	}
 	glEnd();
 }
 
@@ -209,6 +213,17 @@ void Main_menu()
 		draw_button(g_menu_buttons[i].rect, 0.85f, 0.85f, 0.85f);
 		write_button_text(g_menu_buttons[i].rect, g_menu_buttons[i].label);
 	}
+}
+
+void draw_mandelbrot()
+{
+	point z;
+	point c;
+	int i;
+	i = 0;
+	z.x = 0;
+	z.y = 0;
+	
 }
 
 void render_loop()
@@ -229,12 +244,17 @@ void render_loop()
 	}
 	else if (location == LOCATION_TRIANGLE)
 	{
-		draw_triangle();
+		draw_outline();
 		make_fractal_triangle();
 	}
 	else if (location == LOCATION_RECTANGLE)
 	{
+		draw_outline();
 		make_fractal_rectangle();
+	}
+	else if (location == LOCATION_MANDELBROT)
+	{
+		draw_mandelbrot();
 	}
 }
 
@@ -292,16 +312,13 @@ point random_point_in_rectangle()
 {
 	point p;
 	float min_x = Shape.A.x;
-	float max_x = Shape.C.x;
+	float max_x = Shape.B.x;
 	float min_y = Shape.A.y;
-	float max_y = Shape.C.y;
-	float t;
+	float max_y = Shape.D.y;
 
-	if (min_x > max_x) { t = min_x; min_x = max_x; max_x = t; }
-	if (min_y > max_y) { t = min_y; min_y = max_y; max_y = t; }
-
-	p.x = min_x + ((float)rand() / (float)RAND_MAX) * (max_x - min_x);
-	p.y = min_y + ((float)rand() / (float)RAND_MAX) * (max_y - min_y);
+	printf("%f\n", max_x);
+	p.x = min_x + (float)(rand() % 960);
+	p.y = min_y + (float)(rand() % 540);
 	return (p);
 }
 
@@ -337,36 +354,27 @@ void make_fractal_rectangle()
 			vertex = Shape.C;
 			break;
 		case 3:
-			vertex = Shape.C;
+			vertex = Shape.D;
 			break;
 		case 4:
-		{
-			vertex.x = Shape.B.x/2;
+			vertex.x = WIDTH/2;
 			vertex.y = Shape.B.y;
 			break;
-		}
 		case 5:
-		{
-			vertex.x = Shape.D.x/2;
+			vertex.x = WIDTH/2;
 			vertex.y = Shape.D.y;
 			break;
-		}
 		case 6:
-		{
 			vertex.x = Shape.A.x;
-			vertex.y = Shape.C.y/2;
+			vertex.y = HEIGHT/2;
 			break;
-		}
 		case 7:
-		{
 			vertex.x = Shape.B.x;
-			vertex.y = Shape.D.y/2;
+			vertex.y = HEIGHT/2;
 			break;
 		}
-			break;
-		}
-		current.x = (current.x + vertex.x) / 3;
-		current.y = (current.y + vertex.y) / 3;
+		current.x = current.x + (2.0f/3.0f) * (vertex.x - current.x);
+		current.y = current.y + (2.0f/3.0f) * (vertex.y - current.y);
 		plotted = zoom_point(current);
 		glVertex3f(plotted.x, plotted.y, 0);
 		i++;
