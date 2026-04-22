@@ -121,7 +121,7 @@ static void	set_glyph(char c, uint8_t glyph[7])
 		return ;
 }
 
-static void	draw_pixel(float x, float y, float size)
+static void	draw_pixel(double x, double y, double size)
 {
 	glBegin(GL_QUADS);
 	glVertex2f(x, y);
@@ -131,7 +131,7 @@ static void	draw_pixel(float x, float y, float size)
 	glEnd();
 }
 
-static void	draw_glyph_bitmap(uint8_t glyph[7], float x, float y, float pixel_size)
+static void	draw_glyph_bitmap(uint8_t glyph[7], double x, double y, double pixel_size)
 {
 	int	row;
 	int	col;
@@ -150,10 +150,10 @@ static void	draw_glyph_bitmap(uint8_t glyph[7], float x, float y, float pixel_si
 	}
 }
 
-void	write_text(const char *text, float pixel_size, point start)
+void	write_text(const char *text, double pixel_size, point start)
 {
-	float	cursor_x;
-	float	cursor_y;
+	double	cursor_x;
+	double	cursor_y;
 	uint8_t	glyph[7];
 
 	if (text == NULL || pixel_size <= 0.0f)

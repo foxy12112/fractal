@@ -1,5 +1,6 @@
-#include "fractal.h"
+#include "main.h"
 #include "text.h"
+#include "utils.h"
 #include <stdlib.h>
 #include <time.h>
 #include <string.h>
@@ -8,10 +9,10 @@
 #define HEIGHT 1080
 
 typedef struct {
-	float x;
-	float y;
-	float width;
-	float height;
+	double x;
+	double y;
+	double width;
+	double height;
 } button;
 
 typedef struct {
@@ -41,8 +42,14 @@ typedef struct {
 
 int location = LOCATION_MENU;
 
-static float g_zoom = 1.0f;
+static double g_zoom = 1.0f;
 static int g_needs_clear = 0;
+static double shift_y = 0;
+static double shift_x = 0;
+static int escape_value = 4;
+static int max_iteration = 200;
+static bool need_redraw = false;
+pthread_mutex_t start;
 
 static const menu_button g_menu_buttons[5] = {
 	{{760.0f, 760.0f, 400.0f, 80.0f}, LOCATION_TRIANGLE, "TRIANGLE"},
@@ -58,8 +65,8 @@ shape Shape;
 point zoom_point(point p)
 {
 	point out;
-	out.x = (p.x - WIDTH / 2.0f) * g_zoom + WIDTH / 2.0f;
-	out.y = (p.y - HEIGHT / 2.0f) * g_zoom + HEIGHT / 2.0f;
+	out.x = (p.x + shift_x - WIDTH / 2.0f) * g_zoom + WIDTH / 2.0f;
+	out.y = (p.y + shift_y - HEIGHT / 2.0f) * g_zoom + HEIGHT / 2.0f;
 	return (out);
 }
 
@@ -68,6 +75,7 @@ static void zoom_in_func()
 	g_zoom *= 1.1;
 	glClearColor(1, 1, 1, 1);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	need_redraw = true;
 }
 
 static void zoom_out_func()
@@ -75,9 +83,10 @@ static void zoom_out_func()
 	g_zoom /= 1.1;
 	glClearColor(1, 1, 1, 1);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	need_redraw = true;
 }
 
-static int point_in_button(float x, float y, button rect)
+static int point_in_button(double x, double y, button rect)
 {
 	if (x < rect.x)
 		return (0);
@@ -90,7 +99,7 @@ static int point_in_button(float x, float y, button rect)
 	return (1);
 }
 
-static void draw_button(button rect, float red, float green, float blue)
+static void draw_button(button rect, double red, double green, double blue)
 {
 	glColor3f(red, green, blue);
 	glBegin(GL_QUADS);
@@ -112,12 +121,12 @@ static void draw_button(button rect, float red, float green, float blue)
 
 static void write_button_text(button rect, const char *label)
 {
-	float pixel_size;
-	float text_width;
+	double pixel_size;
+	double text_width;
 	point start;
 
 	pixel_size = 4.0f;
-	text_width = (float)strlen(label) * 6.0f * pixel_size;
+	text_width = (double)strlen(label) * 6.0f * pixel_size;
 	start.x = rect.x + (rect.width - text_width) * 0.5f;
 	start.y = rect.y + (rect.height - 7.0f * pixel_size) * 0.5f;
 	glColor3f(0.0f, 0.0f, 0.0f);
@@ -138,14 +147,38 @@ static void key_callback(GLFWwindow *window, int key, int scancode, int action, 
 		zoom_in_func();
 	if (key == GLFW_KEY_KP_SUBTRACT && action == GLFW_PRESS)
 		zoom_out_func();
+	if (key == GLFW_KEY_LEFT && (action == GLFW_PRESS || action == GLFW_REPEAT))
+	{
+		shift_x -= (1 * g_zoom);
+		g_needs_clear = 1;
+		need_redraw = true;
+	}
+	if (key == GLFW_KEY_RIGHT && (action == GLFW_PRESS || action == GLFW_REPEAT))
+	{
+		shift_x += (1 * g_zoom);
+		g_needs_clear = 1;
+		need_redraw = true;
+	}
+	if (key == GLFW_KEY_UP && (action == GLFW_PRESS || action == GLFW_REPEAT))
+	{
+		shift_y += (1 * g_zoom);
+		g_needs_clear = 1;
+		need_redraw = true;
+	}
+	if (key == GLFW_KEY_DOWN && (action == GLFW_PRESS || action == GLFW_REPEAT))
+	{
+		shift_y -= (1 * g_zoom);
+		g_needs_clear = 1;
+		need_redraw = true;
+	}
 }
 
 static void mouse_button_callback(GLFWwindow *window, int button, int action, int mods)
 {
 	double mouse_x;
 	double mouse_y;
-	float x;
-	float y;
+	double x;
+	double y;
 
 	(void)mods;
 	if (button != GLFW_MOUSE_BUTTON_LEFT || action != GLFW_PRESS)
@@ -153,14 +186,15 @@ static void mouse_button_callback(GLFWwindow *window, int button, int action, in
 	if (location != LOCATION_MENU)
 		return;
 	glfwGetCursorPos(window, &mouse_x, &mouse_y);
-	x = (float)mouse_x;
-	y = HEIGHT - (float)mouse_y;
+	x = (double)mouse_x;
+	y = HEIGHT - (double)mouse_y;
 	for (int i = 0; i < 5; i++)
 	{
 		if (!point_in_button(x, y, g_menu_buttons[i].rect))
 			continue;
 		location = g_menu_buttons[i].location;
 		g_needs_clear = 1;
+		need_redraw = true;
 		if (location == LOCATION_TRIANGLE)
 		{
 			Shape.A.x = WIDTH / 2.0f;
@@ -189,7 +223,7 @@ static void mouse_button_callback(GLFWwindow *window, int button, int action, in
 	}
 }
 
-void draw_outline()
+void draw_outline(void)
 {
 	point a = zoom_point(Shape.A);
 	point b = zoom_point(Shape.B);
@@ -206,7 +240,7 @@ void draw_outline()
 	glEnd();
 }
 
-void Main_menu()
+void main_menu(void)
 {
 	for (int i = 0; i < 5; i++)
 	{
@@ -215,18 +249,65 @@ void Main_menu()
 	}
 }
 
-void draw_mandelbrot()
+void draw_mandelbrot(int x, int y)
 {
 	point z;
 	point c;
+	color col;
 	int i;
 	i = 0;
 	z.x = 0;
 	z.y = 0;
-	
+	c.x = (scale(x, -2, +2, WIDTH) * g_zoom) + shift_x;
+	c.y = (scale(y, +2, -2, HEIGHT) * g_zoom) + shift_y;
+	while(i < max_iteration)
+	{
+		z = sum_complex(square_complex(z), c);
+		if ((z.x * z.x) + (z.y * z.y) > escape_value)
+		{
+			col = colorize(scale(i, BLACK, WHITE, max_iteration));
+			glColor3f(col.r, col.g, col.b);
+			glVertex3f(x, y, 0);
+			return ;
+		}
+		i++;
+	}
 }
 
-void render_loop()
+void *mandelbrot_thread(void *arg)
+{
+	pixel_data *data = (pixel_data *)arg;
+	pthread_mutex_lock(&start);
+	pthread_mutex_unlock(&start);
+	double range_x = escape_value / g_zoom;
+	double range_y = escape_value / g_zoom;
+	for (int y = data->y_start; y < data->y_end; y++)
+	{
+		for (int x = 0; x < WIDTH; x++)
+		{
+			point z = {0, 0};
+			point c;
+			int i = 0;
+			//c.x = (scale(x, -2, +2, WIDTH) * g_zoom) + shift_x;
+			//c.y = (scale(y, +2, -2, HEIGHT) * g_zoom) + shift_y;
+			c.x = shift_x + ((double)x / WIDTH -0.5) * range_x;
+			c.y = shift_y + ((double)y / HEIGHT - 0.5) * range_y;
+			while(i < max_iteration)
+			{
+				z = sum_complex(square_complex(z), c);
+				if ((z.x * z.x) + (z.y * z.y) > escape_value)
+				{
+					data->col[x][y] = colorize(scale(i, BLACK, WHITE, max_iteration));
+					break ;
+				}
+				i++;
+			}
+		}
+	}
+	return (NULL);
+}
+
+void render_loop(void)
 {
 	glPointSize(1);
 	glLineWidth(2.5);
@@ -240,28 +321,62 @@ void render_loop()
 	{
 		glClearColor(0, 0, 0, 1);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		Main_menu();
+		main_menu();
 	}
-	else if (location == LOCATION_TRIANGLE)
+	else if (location == LOCATION_TRIANGLE && need_redraw)
 	{
 		draw_outline();
 		make_fractal_triangle();
+		need_redraw = false;
 	}
-	else if (location == LOCATION_RECTANGLE)
+	else if (location == LOCATION_RECTANGLE && need_redraw)
 	{
 		draw_outline();
 		make_fractal_rectangle();
+		need_redraw = false;
 	}
-	else if (location == LOCATION_MANDELBROT)
+	else if (location == LOCATION_MANDELBROT && need_redraw)
 	{
-		draw_mandelbrot();
+		int thread_count = 8;
+		pthread_t threads[thread_count];
+		pixel_data pixels[thread_count];
+		color **col = malloc(sizeof(color *) * WIDTH);
+		for (int x = 0; x < WIDTH; x++)
+			col[x] = malloc(sizeof(color) * HEIGHT);
+		pthread_mutex_lock(&start);
+		int rows_per_thread = HEIGHT/thread_count;
+
+		for (int i = 0; i < thread_count; i++)
+		{
+			pixels[i].col = col;
+			pixels[i].y_start = i * rows_per_thread;
+			pixels[i].y_end = (i == thread_count - 1) ? HEIGHT : (i + 1) * rows_per_thread;
+			pthread_create(&threads[i], NULL, mandelbrot_thread, &pixels[i]);
+		}
+		pthread_mutex_unlock(&start);
+		for (int i = 0; i < thread_count; i++)
+			pthread_join(threads[i], NULL);
+		glBegin(GL_POINTS);
+		for (int y = 0; y < HEIGHT; y++)
+		{
+			for (int x = 0; x < WIDTH; x++)
+			{
+				glColor3f(col[x][y].r, col[x][y].g, col[x][y].b);
+				glVertex3f(x, y, 0);
+			}
+		}
+		glEnd();
+		for (int x = 0; x < WIDTH; x++)
+			free(col[x]);
+		free(col);
+		need_redraw = false;
 	}
 }
 
-point random_point_in_triangle()
+point random_point_in_triangle(void)
 {
-	float r1 = (float)rand() / (float)RAND_MAX;
-	float r2 = (float)rand() / (float)RAND_MAX;
+	double r1 = (double)rand() / (double)RAND_MAX;
+	double r2 = (double)rand() / (double)RAND_MAX;
 	if (r1 + r2 > 1)
 	{
 		r1 = 1.0f - r1;
@@ -273,7 +388,7 @@ point random_point_in_triangle()
 	return (P);
 }
 
-void make_fractal_triangle()
+void make_fractal_triangle(void)
 {
 	static int seeded = 0;
 	static point current;
@@ -290,7 +405,7 @@ void make_fractal_triangle()
 	glPointSize(1);
 	glBegin(GL_POINTS);
 	i = 0;
-	while (i < 20000)
+	while (i < max_iteration)
 	{
 		int pick = rand() % 3;
 		if (pick == 0)
@@ -308,21 +423,20 @@ void make_fractal_triangle()
 	glEnd();
 }
 
-point random_point_in_rectangle()
+point random_point_in_rectangle(void)
 {
 	point p;
-	float min_x = Shape.A.x;
-	float max_x = Shape.B.x;
-	float min_y = Shape.A.y;
-	float max_y = Shape.D.y;
+	double min_x = Shape.A.x;
+	double max_x = Shape.B.x;
+	double min_y = Shape.A.y;
+	double max_y = Shape.D.y;
 
-	printf("%f\n", max_x);
-	p.x = min_x + (float)(rand() % 960);
-	p.y = min_y + (float)(rand() % 540);
+	p.x = min_x + ((double)rand() / (double)RAND_MAX) * (max_x - min_x);
+	p.y = min_y + ((double)rand() / (double)RAND_MAX) * (max_y - min_y);
 	return (p);
 }
 
-void make_fractal_rectangle()
+void make_fractal_rectangle(void)
 {
 	static int seeded = 0;
 	static point current;
@@ -339,7 +453,7 @@ void make_fractal_rectangle()
 	glPointSize(1);
 	glBegin(GL_POINTS);
 	i = 0;
-	while(i < 20000)
+	while(i < max_iteration)
 	{
 		int pick = rand() % 8;
 		switch (pick)
@@ -382,6 +496,13 @@ void make_fractal_rectangle()
 	glEnd();
 }
 
+double get_time()
+{
+	struct timespec ts;
+	clock_gettime(CLOCK_MONOTONIC, &ts);
+	return (ts.tv_sec + ts.tv_nsec / 1e9);
+}
+
 int main(void)
 {
 	GLFWwindow *window;
@@ -409,12 +530,27 @@ int main(void)
 	glMatrixMode( GL_PROJECTION );
 	glLoadIdentity();
 	glOrtho(0,WIDTH,0,HEIGHT,0,1);
-	Main_menu();
+	main_menu();
+	double last_time = get_time();
+	double timer = 0.0;
+	int frames = 0;
 	while (!glfwWindowShouldClose(window))
 	{
+		double current_time = get_time();
+		double delta = current_time - last_time;
+		last_time = current_time;
+		timer += delta;
+		frames++;
 		render_loop();
 		glFlush();
 		glfwPollEvents();
+		if (timer >= 0.5)
+		{
+			double fps = frames / timer;
+			//printf("FPS: %.2f\n", fps);
+			frames = 0;
+			timer = 0.0;
+		}
 	}
 	glfwDestroyWindow(window);
 	glfwTerminate();

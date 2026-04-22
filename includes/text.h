@@ -3,6 +3,6 @@
 
 # include "fractal.h"
 
-void	write_text(const char *text, float pixel_size, point start);
+void	write_text(const char *text, double pixel_size, point start);
 
 #endif
