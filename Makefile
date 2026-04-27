@@ -32,7 +32,7 @@ NC			:= \033[0m
 COMPILER	=	gcc
 INCLUDES	=	-I includes
 CFLAGS		=	-g -fsanitize=address
-EXTRA_FLAGS	=	#-ffast-math #-0fast
+EXTRA_FLAGS	=	-O3 -march=native -flto -ffast-math -funroll-loops -ftree-vectorize -pthread -lglfw -lGL -ldl -lm
 ERROR_FILE	=	error.log
 
 #################################################################################################

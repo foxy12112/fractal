@@ -46,9 +46,12 @@ static double g_zoom = 1.0f;
 static int g_needs_clear = 0;
 static double shift_y = 0;
 static double shift_x = 0;
-static int escape_value = 4;
+static double escape_value = 4.0;
 static int max_iteration = 200;
 static bool need_redraw = false;
+static bool g_drag_active = false;
+static double g_drag_start_x = 0.0;
+static double g_drag_start_y = 0.0;
 pthread_mutex_t start;
 
 static const menu_button g_menu_buttons[5] = {
@@ -181,45 +184,66 @@ static void mouse_button_callback(GLFWwindow *window, int button, int action, in
 	double y;
 
 	(void)mods;
-	if (button != GLFW_MOUSE_BUTTON_LEFT || action != GLFW_PRESS)
-		return;
-	if (location != LOCATION_MENU)
-		return;
 	glfwGetCursorPos(window, &mouse_x, &mouse_y);
 	x = (double)mouse_x;
 	y = HEIGHT - (double)mouse_y;
-	for (int i = 0; i < 5; i++)
+	if (location == LOCATION_MENU)
 	{
-		if (!point_in_button(x, y, g_menu_buttons[i].rect))
-			continue;
-		location = g_menu_buttons[i].location;
-		g_needs_clear = 1;
-		need_redraw = true;
-		if (location == LOCATION_TRIANGLE)
+		for (int i = 0; i < 5; i++)
 		{
-			Shape.A.x = WIDTH / 2.0f;
-			Shape.A.y = HEIGHT * 3.0f / 4.0f;
-			Shape.B.x = WIDTH / 4.0f;
-			Shape.B.y = HEIGHT / 4.0f;
-			Shape.C.x = WIDTH * 3.0f / 4.0f;
-			Shape.C.y = HEIGHT / 4.0f;
-			Shape.points = 3;
+			if (!point_in_button(x, y, g_menu_buttons[i].rect))
+				continue;
+			location = g_menu_buttons[i].location;
+			g_needs_clear = 1;
+			need_redraw = true;
+			if (location == LOCATION_TRIANGLE)
+			{
+				Shape.A.x = WIDTH / 2.0f;
+				Shape.A.y = HEIGHT * 3.0f / 4.0f;
+				Shape.B.x = WIDTH / 4.0f;
+				Shape.B.y = HEIGHT / 4.0f;
+				Shape.C.x = WIDTH * 3.0f / 4.0f;
+				Shape.C.y = HEIGHT / 4.0f;
+				Shape.points = 3;
+			}
+			if (location == LOCATION_RECTANGLE)
+			{
+				Shape.A.x = WIDTH/4;
+				Shape.A.y = HEIGHT/4;
+				Shape.B.x = WIDTH*3/4;
+				Shape.B.y = HEIGHT/4;
+				Shape.C.x = WIDTH*3/4;
+				Shape.C.y = HEIGHT*3/4;
+				Shape.D.x = WIDTH/4;
+				Shape.D.y = HEIGHT*3/4;
+				Shape.points = 4;
+			}
+			if (location == LOCATION_EXIT)
+				glfwSetWindowShouldClose(window, GLFW_TRUE);
+			return;
 		}
-		if (location == LOCATION_RECTANGLE)
+	}
+	else
+	{
+		if (action == GLFW_PRESS)
 		{
-			Shape.A.x = WIDTH/4;
-			Shape.A.y = HEIGHT/4;
-			Shape.B.x = WIDTH*3/4;
-			Shape.B.y = HEIGHT/4;
-			Shape.C.x = WIDTH*3/4;
-			Shape.C.y = HEIGHT*3/4;
-			Shape.D.x = WIDTH/4;
-			Shape.D.y = HEIGHT*3/4;
-			Shape.points = 4;
+			g_drag_active = true;
+			g_drag_start_x = x;
+			g_drag_start_y = y;
 		}
-		if (location == LOCATION_EXIT)
-			glfwSetWindowShouldClose(window, GLFW_TRUE);
-		return;
+		else if (action == GLFW_RELEASE && g_drag_active)
+		{
+			
+			double cx = (g_drag_start_x + x) * 0.5;
+			double cy = (g_drag_start_y + y) * 0.5;
+
+			shift_x = (scale((int)cx, -2, +2, WIDTH) * g_zoom) + shift_x;
+			shift_y = (scale((int)cy, +2, -2, HEIGHT) * g_zoom) + shift_y;
+
+			g_drag_active = false;
+			zoom_in_func();
+		}
+
 	}
 }
 
@@ -249,38 +273,11 @@ void main_menu(void)
 	}
 }
 
-void draw_mandelbrot(int x, int y)
-{
-	point z;
-	point c;
-	color col;
-	int i;
-	i = 0;
-	z.x = 0;
-	z.y = 0;
-	c.x = (scale(x, -2, +2, WIDTH) * g_zoom) + shift_x;
-	c.y = (scale(y, +2, -2, HEIGHT) * g_zoom) + shift_y;
-	while(i < max_iteration)
-	{
-		z = sum_complex(square_complex(z), c);
-		if ((z.x * z.x) + (z.y * z.y) > escape_value)
-		{
-			col = colorize(scale(i, BLACK, WHITE, max_iteration));
-			glColor3f(col.r, col.g, col.b);
-			glVertex3f(x, y, 0);
-			return ;
-		}
-		i++;
-	}
-}
-
 void *mandelbrot_thread(void *arg)
 {
 	pixel_data *data = (pixel_data *)arg;
 	pthread_mutex_lock(&start);
 	pthread_mutex_unlock(&start);
-	double range_x = escape_value / g_zoom;
-	double range_y = escape_value / g_zoom;
 	for (int y = data->y_start; y < data->y_end; y++)
 	{
 		for (int x = 0; x < WIDTH; x++)
@@ -288,20 +285,22 @@ void *mandelbrot_thread(void *arg)
 			point z = {0, 0};
 			point c;
 			int i = 0;
-			//c.x = (scale(x, -2, +2, WIDTH) * g_zoom) + shift_x;
-			//c.y = (scale(y, +2, -2, HEIGHT) * g_zoom) + shift_y;
-			c.x = shift_x + ((double)x / WIDTH -0.5) * range_x;
-			c.y = shift_y + ((double)y / HEIGHT - 0.5) * range_y;
+			bool escaped = false;
+			c.x = (scale(x, -2, +2, WIDTH) / g_zoom) + shift_x;
+			c.y = (scale(y, +2, -2, HEIGHT) / g_zoom) + shift_y;
 			while(i < max_iteration)
 			{
 				z = sum_complex(square_complex(z), c);
 				if ((z.x * z.x) + (z.y * z.y) > escape_value)
 				{
 					data->col[x][y] = colorize(scale(i, BLACK, WHITE, max_iteration));
+					escaped = true;
 					break ;
 				}
 				i++;
 			}
+			if (!escaped)
+				data->col[x][y] = colorize(BLACK);
 		}
 	}
 	return (NULL);
@@ -337,7 +336,7 @@ void render_loop(void)
 	}
 	else if (location == LOCATION_MANDELBROT && need_redraw)
 	{
-		int thread_count = 8;
+		int thread_count = 16;
 		pthread_t threads[thread_count];
 		pixel_data pixels[thread_count];
 		color **col = malloc(sizeof(color *) * WIDTH);
@@ -547,8 +546,9 @@ int main(void)
 		if (timer >= 0.5)
 		{
 			double fps = frames / timer;
-			//printf("FPS: %.2f\n", fps);
+			printf("FPS: %.2f\n", fps);
 			frames = 0;
+			printf("zoom==%.2f\n", g_zoom);
 			timer = 0.0;
 		}
 	}
