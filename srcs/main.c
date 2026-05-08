@@ -52,6 +52,7 @@ static bool need_redraw = false;
 static bool g_drag_active = false;
 static double g_drag_start_x = 0.0;
 static double g_drag_start_y = 0.0;
+static double deltatime = 0;
 pthread_mutex_t start;
 
 static const menu_button g_menu_buttons[5] = {
@@ -136,6 +137,49 @@ static void write_button_text(button rect, const char *label)
 	write_text(label, pixel_size, start);
 }
 
+int move_left = 0;
+int move_right = 0;
+int move_down = 0;
+int move_up = 0;
+
+static void movement(int key, int action)
+{
+	if (key == GLFW_KEY_LEFT)
+		if (action == GLFW_PRESS)
+			move_left = 1;
+		else if (action == GLFW_RELEASE)
+			move_left = 0;
+	if (key == GLFW_KEY_RIGHT)
+		if (action == GLFW_PRESS)
+			move_right = 1;
+		else if (action == GLFW_RELEASE)
+			move_right = 0;
+	if (key == GLFW_KEY_UP)
+		if (action == GLFW_PRESS)
+			move_up = 1;
+		else if (action == GLFW_RELEASE)
+			move_up = 0;
+	if (key == GLFW_KEY_DOWN)
+		if (action == GLFW_PRESS)
+			move_down = 1;
+		else if (action == GLFW_RELEASE)
+			move_down = 0;
+}
+
+void update(void)
+{
+	if (move_left)
+		shift_x -= deltatime;
+	else if (move_up)
+		shift_y -= deltatime;
+	else if (move_down)
+		shift_y += deltatime;
+	else if (move_right)
+		shift_x += deltatime;
+	g_needs_clear = 1;
+	need_redraw = true;
+}
+
 static void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods)
 {
 	(void)scancode;
@@ -150,30 +194,7 @@ static void key_callback(GLFWwindow *window, int key, int scancode, int action, 
 		zoom_in_func();
 	if (key == GLFW_KEY_KP_SUBTRACT && action == GLFW_PRESS)
 		zoom_out_func();
-	if (key == GLFW_KEY_LEFT && (action == GLFW_PRESS || action == GLFW_REPEAT))
-	{
-		shift_x -= (1 * g_zoom);
-		g_needs_clear = 1;
-		need_redraw = true;
-	}
-	if (key == GLFW_KEY_RIGHT && (action == GLFW_PRESS || action == GLFW_REPEAT))
-	{
-		shift_x += (1 * g_zoom);
-		g_needs_clear = 1;
-		need_redraw = true;
-	}
-	if (key == GLFW_KEY_UP && (action == GLFW_PRESS || action == GLFW_REPEAT))
-	{
-		shift_y += (1 * g_zoom);
-		g_needs_clear = 1;
-		need_redraw = true;
-	}
-	if (key == GLFW_KEY_DOWN && (action == GLFW_PRESS || action == GLFW_REPEAT))
-	{
-		shift_y -= (1 * g_zoom);
-		g_needs_clear = 1;
-		need_redraw = true;
-	}
+	movement(key, action);
 }
 
 static void mouse_button_callback(GLFWwindow *window, int button, int action, int mods)
@@ -310,6 +331,7 @@ void render_loop(void)
 {
 	glPointSize(1);
 	glLineWidth(2.5);
+	update();
 	if (g_needs_clear)
 	{
 		glClearColor(1, 1, 1, 1);
@@ -536,9 +558,9 @@ int main(void)
 	while (!glfwWindowShouldClose(window))
 	{
 		double current_time = get_time();
-		double delta = current_time - last_time;
+		deltatime = current_time - last_time;
 		last_time = current_time;
-		timer += delta;
+		timer += deltatime;
 		frames++;
 		render_loop();
 		glFlush();
