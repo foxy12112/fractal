@@ -30,3 +30,10 @@ color colorize(int col)
 	a.b = (col & 0xFF) / 255.0f;
 	return a;
 }
+
+double get_time()
+{
+	struct timespec ts;
+	clock_gettime(CLOCK_MONOTONIC, &ts);
+	return (ts.tv_sec + ts.tv_nsec / 1e9);
+}
