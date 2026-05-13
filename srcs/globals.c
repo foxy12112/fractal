@@ -19,4 +19,7 @@ int move_right = 0;
 int move_down = 0;
 int move_up = 0;
 
+double julia_x = -0.7269;
+double julia_y = 0.1889;
+
 shape Shape;

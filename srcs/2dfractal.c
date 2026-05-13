@@ -128,3 +128,38 @@ void *mandelbrot_thread(void *arg)
 	}
 	return (NULL);
 }
+
+void *simple_julia_thread(void *arg)
+{
+	pixel_data *data = (pixel_data *)arg;
+	pthread_mutex_lock(&start);
+	pthread_mutex_unlock(&start);
+	for (int y = data->y_start; y < data->y_end; y++)
+	{
+		for (int x = 0; x < WIDTH; x++)
+		{
+			point z;
+			point c;
+			int i = 0;
+			bool escaped = false;
+			z.x = (scale(x, -2, +2, HEIGHT) / g_zoom) + shift_x;
+			z.y = (scale(y, +2, -2, WIDTH) / g_zoom) + shift_y;
+			c.x = julia_x;
+			c.y = julia_y;
+			while(i < max_iteration)
+			{
+				z = sum_complex(square_complex(z), c);
+				if ((z.x * z.x) + (z.y * z.y) > escape_value)
+				{
+					data->col[x][y] = colorize(scale(i, BLACK, WHITE, max_iteration));
+					escaped = true;
+					break ;
+				}
+				i++;
+			}
+			if (!escaped)
+				data->col[x][y] = colorize(BLACK);
+		}
+	}
+	return NULL;
+}

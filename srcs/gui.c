@@ -56,3 +56,14 @@ void write_button_text(button rect, const char *label)
 	write_text(label, pixel_size, start);
 }
 
+void draw_slider(button rect, double r, double g, double b)
+{
+	glColor3f(r, g, b);
+	//draw slider slider first i think
+	float radius = 70;
+	float twoPI = 2 * PI;
+	glBegin(GL_TRIANGLE_FAN);
+	for (float i = PI; i <= twoPI; i += 0.001)
+		glVertex2f((sin(i) * radius), (cos(i)*radius));
+	glEnd();
+}

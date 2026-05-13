@@ -50,4 +50,6 @@ static const menu_button g_menu_buttons[5] = {
 	{{760.0f, 360.0f, 400.0f, 80.0f}, LOCATION_EXIT, "EXIT"}
 };
 
+static const button slider = {(float)WIDTH-405, (float)HEIGHT-60, 400.0f, 50.0f};
+
 #endif

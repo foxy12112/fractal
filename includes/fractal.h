@@ -1,6 +1,8 @@
 #ifndef FRACTAL_H
 # define FRACTAL_H
 
+
+
 # include "glad.h"
 # include <stdlib.h>
 # include <stdio.h>
@@ -10,12 +12,17 @@
 # include <time.h>
 # include <unistd.h>
 # include <stdbool.h>
+# include <math.h>
+
+
 
 # define BLACK 0x000000
 # define WHITE 0xFFFFFF
 
 # define WIDTH 1920
 # define HEIGHT 1080
+
+# define PI 3.14159265358979323846
 
 #define LOCATION_MENU 0
 #define LOCATION_TRIANGLE 1
@@ -43,7 +50,8 @@ extern int move_left;
 extern int move_right;
 extern int move_down;
 extern int move_up;
-
+extern double julia_x;
+extern double julia_y;
 
 
 # include "structs.h"

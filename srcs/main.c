@@ -63,6 +63,43 @@ void render_loop(void)
 		free(col);
 		need_redraw = false;
 	}
+	else if (location == LOCATION_JULIA && need_redraw)
+	{
+		int thread_count = 16;
+		pthread_t threads[thread_count];
+		pixel_data pixels[thread_count];
+		color **col = malloc(sizeof(color *) *WIDTH);
+		for (int x = 0; x < WIDTH; x++)
+			col[x] = malloc(sizeof(color) * HEIGHT);
+		pthread_mutex_lock(&start);
+		int rows_per_thread = HEIGHT/thread_count;
+		for (int i = 0; i < thread_count; i++)
+		{
+			pixels[i].col = col;
+			pixels[i].y_start = i * rows_per_thread;
+			pixels[i].y_end = (i == thread_count - 1) ? HEIGHT : (i + 1) * rows_per_thread;
+			pthread_create(&threads[i], NULL, simple_julia_thread, &pixels[i]);
+		}
+		pthread_mutex_unlock(&start);
+		for (int i = 0; i < thread_count; i++)
+			pthread_join(threads[i], NULL);
+		glBegin(GL_POINTS);
+		for (int y = 0; y < HEIGHT; y++)
+		{
+			for (int x = 0; x < WIDTH; x++)
+			{
+				glColor3f(col[x][y].r, col[x][y].g, col[x][y].b);
+				glVertex3f(x, y, 0);
+			}
+		}
+		glEnd();
+		for (int x = 0; x < WIDTH; x++)
+			free(col[x]);
+		free(col);
+		need_redraw = false;
+		draw_button(slider, 211, 211, 211);
+		draw_slider(slider, 211, 211, 211);
+	}
 }
 
 

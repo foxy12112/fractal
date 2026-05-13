@@ -47,27 +47,9 @@ void mouse_button_callback(GLFWwindow *window, int button, int action, int mods)
 			return;
 		}
 	}
-	else
+	if (location == LOCATION_JULIA && point_in_button(x, y, slider))
 	{
-		if (action == GLFW_PRESS)
-		{
-			g_drag_active = true;
-			g_drag_start_x = x;
-			g_drag_start_y = y;
-		}
-		else if (action == GLFW_RELEASE && g_drag_active)
-		{
-			
-			double cx = (g_drag_start_x + x) * 0.5;
-			double cy = (g_drag_start_y + y) * 0.5;
-
-			shift_x = (scale((int)cx, -2, +2, WIDTH) * g_zoom) + shift_x;
-			shift_y = (scale((int)cy, +2, -2, HEIGHT) * g_zoom) + shift_y;
-
-			g_drag_active = false;
-			zoom_in_func();
-		}
-
+		
 	}
 }
 

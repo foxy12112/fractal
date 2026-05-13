@@ -4,11 +4,11 @@ void update(void)
 {
 	if (move_left)
 		shift_x -= deltatime / g_zoom;
-	else if (move_up)
+	if (move_up)
 		shift_y -= deltatime / g_zoom;
-	else if (move_down)
+	if (move_down)
 		shift_y += deltatime / g_zoom;
-	else if (move_right)
+	if (move_right)
 		shift_x += deltatime / g_zoom;
 	g_needs_clear = 1;
 	need_redraw = true;
