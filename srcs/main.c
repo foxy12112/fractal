@@ -65,6 +65,7 @@ void render_loop(void)
 	}
 	else if (location == LOCATION_JULIA && need_redraw)
 	{
+		normalize_julia();
 		int thread_count = 16;
 		pthread_t threads[thread_count];
 		pixel_data pixels[thread_count];
@@ -97,8 +98,10 @@ void render_loop(void)
 			free(col[x]);
 		free(col);
 		need_redraw = false;
-		draw_button(slider, 211, 211, 211);
-		draw_slider(slider, 211, 211, 211);
+		draw_button(slider, (float)180/255, (float)180/255, (float)180/255);
+		draw_slider(middle_slider, (float)240/255, (float)240/255, (float)240/255, slider_x, HEIGHT-35);
+		draw_button(slider_button_y, (float)180/255, (float)180/255, (float)180/255);
+		draw_slider(middle_slider_y, (float)240/255, (float)240/255, (float)240/255, WIDTH-30, slider_y);
 	}
 }
 
@@ -154,6 +157,7 @@ int main(void)
 			printf("zoom==%.2f\n", g_zoom);
 			timer = 0.0;
 			printf("max iterations==%d\n", max_iteration);
+			printf("julia_x:%.6f\tjulia_y:%.6f\n", julia_x, julia_y);
 		}
 	}
 	glfwDestroyWindow(window);

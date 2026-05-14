@@ -9,6 +9,6 @@ void *mandelbrot_thread(void *arg);
 point random_point_in_rectangle(void);
 point random_point_in_triangle(void);
 void *simple_julia_thread(void *arg);
-
+void normalize_julia(void);
 
 #endif

@@ -52,6 +52,8 @@ extern int move_down;
 extern int move_up;
 extern double julia_x;
 extern double julia_y;
+extern int  slider_x;
+extern int slider_y;
 
 
 # include "structs.h"

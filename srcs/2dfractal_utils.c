@@ -28,3 +28,8 @@ point random_point_in_triangle(void)
 	return (P);
 }
 
+void normalize_julia(void)
+{
+	julia_x = ((slider_x - 1530.0) / (1900.0 - 1530.0) * 4)-2;
+	julia_y = ((slider_y - 630.0) / 370.0 * 4)-2;
+}

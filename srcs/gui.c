@@ -32,7 +32,7 @@ void draw_button(button rect, double red, double green, double blue)
 	glVertex3f(rect.x, rect.y + rect.height, 0.0f);
 	glEnd();
 
-	glColor3f(0.0f, 0.0f, 0.0f);
+	glColor3f(0, 0, 0);
 	glLineWidth(3.0f);
 	glBegin(GL_LINE_LOOP);
 	glVertex3f(rect.x, rect.y, 0.0f);
@@ -56,14 +56,27 @@ void write_button_text(button rect, const char *label)
 	write_text(label, pixel_size, start);
 }
 
-void draw_slider(button rect, double r, double g, double b)
+void draw_slider(button rect, double r, double g, double b, int x, int y)
 {
 	glColor3f(r, g, b);
 	//draw slider slider first i think
-	float radius = 70;
+	float radius = 15.0f;
 	float twoPI = 2 * PI;
+	glBegin(GL_QUADS);
+	glVertex3f(rect.x, rect.y, 0.0f);
+	glVertex3f(rect.x + rect.width, rect.y, 0.0f);
+	glVertex3f(rect.x + rect.width, rect.y + rect.height, 0.0f);
+	glVertex3f(rect.x, rect.y + rect.height, 0.0f);
+	glEnd();
+	glColor3f(0,0,0);
 	glBegin(GL_TRIANGLE_FAN);
-	for (float i = PI; i <= twoPI; i += 0.001)
-		glVertex2f((sin(i) * radius), (cos(i)*radius));
+	glVertex3f(x, y, 0.0f);
+	for (int i = 0; i <= 20; i++)
+	{
+		float angle = (i / 20.0) * twoPI;
+		float cx = x + radius * cos(angle);
+		float cy = y + radius * sin(angle);
+		glVertex3f(cx, cy, 0.0f);
+	}
 	glEnd();
 }

@@ -21,5 +21,9 @@ int move_up = 0;
 
 double julia_x = -0.7269;
 double julia_y = 0.1889;
+//int slider_x = WIDTH-390;
+//int slider_y = HEIGHT-85;
+int slider_x = 1648;
+int slider_y = 832;
 
 shape Shape;

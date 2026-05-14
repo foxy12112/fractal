@@ -51,5 +51,7 @@ static const menu_button g_menu_buttons[5] = {
 };
 
 static const button slider = {(float)WIDTH-405, (float)HEIGHT-60, 400.0f, 50.0f};
-
+static const button middle_slider = {(float)WIDTH -390, (float)HEIGHT-50, 370.0f, 30.0f};
+static const button slider_button_y = {(float)WIDTH-55, (float)HEIGHT-460, 50.0f, 400.0f};
+static const button middle_slider_y = {(float)WIDTH-45, (float)HEIGHT-450, 30.0f, 370.0f};
 #endif

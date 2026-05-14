@@ -47,10 +47,6 @@ void mouse_button_callback(GLFWwindow *window, int button, int action, int mods)
 			return;
 		}
 	}
-	if (location == LOCATION_JULIA && point_in_button(x, y, slider))
-	{
-		
-	}
 }
 
 void scroll_callback(GLFWwindow *window, double xoffset, double yoffset)
@@ -75,5 +71,17 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
 		max_iteration++;
 	if (key == GLFW_KEY_KP_SUBTRACT && (action == GLFW_PRESS || action == GLFW_REPEAT))
 		max_iteration--;
+	if (key == GLFW_KEY_KP_4 && (action == GLFW_PRESS || action == GLFW_REPEAT))
+		if (slider_x > WIDTH-390)
+			slider_x--;
+	if (key == GLFW_KEY_KP_6 && (action == GLFW_PRESS || action == GLFW_REPEAT))
+		if (slider_x < WIDTH-20)
+			slider_x++;
+	if (key == GLFW_KEY_KP_8 && (action == GLFW_PRESS || action == GLFW_REPEAT))
+		if (slider_y < HEIGHT - 85)
+			slider_y++;
+	if (key == GLFW_KEY_KP_2 && (action == GLFW_PRESS || action == GLFW_REPEAT))
+		if (slider_y > HEIGHT - 450)
+			slider_y--;
 	movement(key, action);
 }
